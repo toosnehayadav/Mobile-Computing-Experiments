@@ -7,32 +7,30 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            DrawingGameApp()
+            WritingCanvasApp()
         }
     }
 }
 
 @Composable
-fun DrawingGameApp() {
+fun WritingCanvasApp() {
 
-    var currentShape by remember { mutableStateOf(generateShape()) }
-    var score by remember { mutableStateOf(0) }
+    var paths by remember { mutableStateOf(listOf<Path>()) }
+    var currentPath by remember { mutableStateOf(Path()) }
 
     Column(
         modifier = Modifier
@@ -40,86 +38,64 @@ fun DrawingGameApp() {
             .padding(16.dp)
     ) {
 
-        Text("🎨 Drawing Game", style = MaterialTheme.typography.headlineMedium)
+        Text("✍ Drawing Canvas",
+            style = MaterialTheme.typography.headlineMedium)
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Draw this shape: $currentShape")
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+                .background(Color.White)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            currentPath = Path().apply {
+                                moveTo(offset.x, offset.y)
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            currentPath.lineTo(
+                                change.position.x,
+                                change.position.y
+                            )
+                        },
+                        onDragEnd = {
+                            paths = paths + currentPath
+                        }
+                    )
+                }
+        ) {
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text("Score: $score")
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        DrawingCanvas()
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row {
-
-            Button(onClick = {
-                currentShape = generateShape()
-            }) {
-                Text("New Shape")
+            // Draw previous strokes
+            paths.forEach {
+                drawPath(
+                    path = it,
+                    color = Color.Black,
+                    style = Stroke(width = 8f)
+                )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            // Draw current stroke
+            drawPath(
+                path = currentPath,
+                color = Color.Black,
+                style = Stroke(width = 8f)
+            )
+        }
 
-            Button(onClick = {
-                score++
-                currentShape = generateShape()
-            }) {
-                Text("I Drew It!")
-            }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                paths = emptyList()
+                currentPath = Path()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Clear")
         }
     }
 }
 
-@Composable
-fun DrawingCanvas() {
-
-    val path = remember { Path() }
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp)
-            .background(Color.White)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        path.moveTo(offset.x, offset.y)
-                    },
-                    onDrag = { change, _ ->
-                        path.lineTo(change.position.x, change.position.y)
-                    }
-                )
-            }
-    ) {
-        drawPath(
-            path = path,
-            color = Color.Black
-        )
-    }
-
-    Spacer(modifier = Modifier.height(10.dp))
-
-    Button(onClick = {
-        path.reset()
-    }) {
-        Text("Clear Drawing")
-    }
-}
-
-
-fun generateShape(): String {
-    val shapes = listOf(
-        "Circle",
-        "Square",
-        "Triangle",
-        "Star",
-        "Rectangle"
-    )
-    return shapes[Random.nextInt(shapes.size)]
-}
